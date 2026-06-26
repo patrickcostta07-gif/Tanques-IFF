@@ -72,6 +72,7 @@
   </header>
 
   <div class="grid">
+    <!-- Oxigênio -->
     <div class="card">
       <div class="icon icon-o2">🫁</div>
       <h3>Oxigênio (O₂) Médico</h3>
@@ -90,6 +91,7 @@
       <button class="btn-reg btn-o2" onclick="registerReading('o2')">Registrar Leitura O₂</button>
     </div>
 
+    <!-- Óxido Nitroso -->
     <div class="card">
       <div class="icon icon-n2o">💨</div>
       <h3>Óxido Nitroso (N₂O)</h3>
@@ -161,13 +163,11 @@ function registerReading(gas) {
     data: new Date().toLocaleString('pt-BR')
   };
 
-  // Validação para evitar campos vazios
   if (!data.nivel || !data.pressao) {
     alert("Por favor, preencha o nível atual e a pressão!");
     return;
   }
 
-  // Convertendo dados para URL-encoded para evitar erros de CORS no Google Script
   const formData = new URLSearchParams();
   for (const key in data) {
     formData.append(key, data[key]);
@@ -182,12 +182,10 @@ function registerReading(gas) {
   .then(() => {
     showToast(`✅ Leitura de ${gas.toUpperCase()} enviada com sucesso!`);
     
-    // Limpa os campos após enviar
     document.getElementById(`in-${gas}-vol`).value = '';
     document.getElementById(`in-${gas}-pres`).value = '';
     document.getElementById(`in-${gas}-obs`).value = '';
     
-    // Pequeno delay para dar tempo do Google Sheets registrar antes de atualizar a tabela
     setTimeout(loadData, 1500);
   })
   .catch(err => alert("Erro ao salvar: " + err));
@@ -204,14 +202,12 @@ function loadData() {
 
       document.getElementById('last-update').textContent = 'Atualizado agora';
 
-      // Pega o último registro de cada gás para atualizar os medidores visuais (Gauges)
       const lastO2 = records.find(r => r.gas === 'O2') || {};
       const lastN2O = records.find(r => r.gas === 'N2O') || {};
       
       if (lastO2.nivel) updateGauge('o2', parseFloat(lastO2.nivel), parseFloat(lastO2.max || 160));
       if (lastN2O.nivel) updateGauge('n2o', parseFloat(lastN2O.nivel), parseFloat(lastN2O.max || 36));
 
-      // Monta a tabela de histórico recente
       let html = `<table style="width:100%;border-collapse:collapse">
                     <tr style="background:#f8f8f8"><th style="padding:10px;text-align:left">Data</th><th>Gás</th><th>Nível</th><th>Pressão</th><th>Responsável</th></tr>`;
       
@@ -234,39 +230,33 @@ function loadData() {
     });
 }
 
-function registerReading(gas) {
-  const data = {
-    gas: gas.toUpperCase(),
-    max: document.getElementById(`in-${gas}-max`).value,
-    nivel: document.getElementById(`in-${gas}-vol`).value,
-    pressao: document.getElementById(`in-${gas}-pres`).value,
-    responsavel: document.getElementById(`in-${gas}-user`).value || "Não informado",
-    observacao: document.getElementById(`in-${gas}-obs`).value,
-    data: new Date().toLocaleString('pt-BR')
-  };
+function updateChart(records) {
+  const ctx = document.getElementById('historyChart');
+  if (chart) chart.destroy();
+  
+  const o2Data = records.filter(r => r.gas === 'O2').slice(0,10).reverse();
+  const n2oData = records.filter(r => r.gas === 'N2O').slice(0,10).reverse();
 
-  if (!data.nivel || !data.pressao) {
-    alert("Por favor, preencha o nível atual e a pressão!");
-    return;
-  }
+  const labels = o2Data.map(r => r.data ? r.data.split(' ')[0] : '');
 
-  const formData = new URLSearchParams();
-  for (const key in data) {
-    formData.append(key, data[key]);
-  }
-
-  fetch(SCRIPT_URL, {
-    method: 'POST',
-    mode: 'no-cors',
-    body: formData,
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-  })
-  .then(() => {
-    showToast(`✅ Leitura de ${gas.toUpperCase()} enviada!`);
-    document.getElementById(`in-${gas}-vol`).value = '';
-    document.getElementById(`in-${gas}-pres`).value = '';
-    document.getElementById(`in-${gas}-obs`).value = '';
-    setTimeout(loadData, 1500);
-  })
-  .catch(err => alert("Erro ao salvar: " + err));
+  chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [
+        { label: 'O₂ (pol)', data: o2Data.map(r => r.nivel), borderColor: '#185FA5', tension: 0.3 },
+        { label: 'N₂O (pol)', data: n2oData.map(r => r.nivel), borderColor: '#993556', tension: 0.3 }
+      ]
+    },
+    options: { responsive: true, plugins: { legend: { position: 'top' } } }
+  });
 }
+
+function exportCSV() {
+  window.open(SCRIPT_URL + '?format=csv', '_blank');
+}
+
+window.onload = loadData;
+</script>
+</body>
+</html>
