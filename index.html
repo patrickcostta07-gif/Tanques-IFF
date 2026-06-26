@@ -1,3 +1,155 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Monitoramento Tanques - Gasoterapia IFF</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#f5f6f8;--surface:#fff;--border:rgba(0,0,0,.1);
+      --text:#1a1a1a;--blue:#185FA5;--pink:#993556;
+    }
+    body{
+      font-family:system-ui,sans-serif;
+      background:var(--bg);
+      color:var(--text);
+      padding:16px 12px;
+      line-height:1.5;
+    }
+    .page{max-width:920px;margin:0 auto}
+
+    header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px}
+    h1{font-size:26px;font-weight:700}
+
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:30px}
+    @media(max-width:680px){.grid{grid-template-columns:1fr}}
+
+    .card{
+      background:var(--surface);border:1px solid var(--border);
+      border-radius:16px;padding:24px;box-shadow:0 4px 15px rgba(0,0,0,.06);
+    }
+    .icon{width:64px;height:64px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:34px;margin-bottom:16px}
+    .icon-o2{background:#E6F1FB;color:var(--blue)}
+    .icon-n2o{background:#FBEAF0;color:var(--pink)}
+
+    .gauge-wrap{margin:18px 0}
+    .gauge-top{display:flex;justify-content:space-between;font-size:14px;margin-bottom:6px}
+    .gauge-track{height:14px;background:#eee;border-radius:999px;overflow:hidden}
+    .gauge-fill{height:100%;border-radius:999px;transition:width 0.8s ease}
+
+    .field{margin-bottom:14px}
+    .field label{display:block;font-size:14px;color:#555;margin-bottom:6px;font-weight:500}
+    .field input,.field textarea{width:100%;padding:12px;border:1px solid var(--border);border-radius:10px;font-size:16px}
+
+    .btn-reg{
+      width:100%;padding:16px;border:none;border-radius:12px;
+      font-size:17px;font-weight:600;color:white;cursor:pointer;margin-top:8px
+    }
+    .btn-o2{background:var(--blue)}
+    .btn-n2o{background:var(--pink)}
+
+    .status-low{color:#d32f2f; font-weight:600}
+    .status-medium{color:#f57c00; font-weight:600}
+    .status-good{color:#388e3c; font-weight:600}
+
+    .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1e1e1e;color:white;padding:14px 24px;border-radius:12px;display:none;z-index:1000}
+  </style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <div>
+      <h1>Monitoramento de Tanques</h1>
+      <p style="color:#666">Gasoterapia — IFF</p>
+    </div>
+    <div style="text-align:right">
+      <small id="last-update">Atualizado agora</small><br>
+      <button onclick="loadData()" style="margin-top:6px;padding:8px 14px">Atualizar</button>
+    </div>
+  </header>
+
+  <div class="grid">
+    <div class="card">
+      <div class="icon icon-o2">🫁</div>
+      <h3>Oxigênio (O₂) Médico</h3>
+      
+      <div class="gauge-wrap">
+        <div class="gauge-top"><span>Nível</span><span id="o2-pct">0%</span></div>
+        <div class="gauge-track"><div class="gauge-fill" id="o2-bar" style="width:0%;background:#185FA5"></div></div>
+      </div>
+
+      <div class="field"><label>Máx (pol)</label><input type="number" id="in-o2-max" value="160" step="0.1"></div>
+      <div class="field"><label>Nível atual (pol)</label><input type="number" id="in-o2-vol" step="0.1" placeholder="Ex: 142.5"></div>
+      <div class="field"><label>Pressão (bar)</label><input type="number" id="in-o2-pres" step="0.1" placeholder="Ex: 9.5"></div>
+      <div class="field"><label>Responsável</label><input type="text" id="in-o2-user" placeholder="Seu nome"></div>
+      <div class="field"><label>Observação</label><textarea id="in-o2-obs" rows="2" placeholder="Observações..."></textarea></div>
+
+      <button class="btn-reg btn-o2" onclick="registerReading('o2')">Registrar Leitura O₂</button>
+    </div>
+
+    <div class="card">
+      <div class="icon icon-n2o">💨</div>
+      <h3>Óxido Nitroso (N₂O)</h3>
+      
+      <div class="gauge-wrap">
+        <div class="gauge-top"><span>Nível</span><span id="n2o-pct">0%</span></div>
+        <div class="gauge-track"><div class="gauge-fill" id="n2o-bar" style="width:0%;background:#993556"></div></div>
+      </div>
+
+      <div class="field"><label>Máx (pol)</label><input type="number" id="in-n2o-max" value="36" step="0.1"></div>
+      <div class="field"><label>Nível atual (pol)</label><input type="number" id="in-n2o-vol" step="0.1" placeholder="Ex: 28.0"></div>
+      <div class="field"><label>Pressão (bar)</label><input type="number" id="in-n2o-pres" step="0.1" placeholder="Ex: 10"></div>
+      <div class="field"><label>Responsável</label><input type="text" id="in-n2o-user" placeholder="Seu nome"></div>
+      <div class="field"><label>Observação</label><textarea id="in-n2o-obs" rows="2" placeholder="Observações..."></textarea></div>
+
+      <button class="btn-reg btn-n2o" onclick="registerReading('n2o')">Registrar Leitura N₂O</button>
+    </div>
+  </div>
+
+  <div style="background:white;padding:20px;border-radius:16px;border:1px solid #ddd;margin-bottom:20px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <h3>Gráfico de Níveis</h3>
+      <button onclick="exportCSV()">Exportar CSV</button>
+    </div>
+    <canvas id="historyChart" height="140"></canvas>
+  </div>
+
+  <div style="background:white;padding:20px;border-radius:16px;border:1px solid #ddd">
+    <h3>Registros Recentes</h3>
+    <div id="log-body" style="max-height:500px;overflow:auto"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// URL Atualizada do Google Apps Script
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxv18-9lVZK5BWMC3oe0-FiHzphZGtkEPxopz57E1zxNLL_Pt-Z_OLQDCS3O3of4OoV/exec";
+let chart;
+
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.style.display = 'block';
+  setTimeout(() => toast.style.display = 'none', 2800);
+}
+
+function updateGauge(gas, nivel, max) {
+  const pct = max > 0 ? Math.min(Math.round((nivel / max) * 100), 100) : 0;
+  const bar = document.getElementById(gas + '-bar');
+  const txt = document.getElementById(gas + '-pct');
+  
+  bar.style.width = pct + '%';
+  txt.textContent = pct + '%';
+  
+  if (pct < 25) bar.style.background = '#d32f2f';
+  else if (pct < 50) bar.style.background = '#f57c00';
+  else bar.style.background = gas === 'o2' ? '#185FA5' : '#993556';
+}
+
 function registerReading(gas) {
   const data = {
     gas: gas.toUpperCase(),
@@ -9,13 +161,13 @@ function registerReading(gas) {
     data: new Date().toLocaleString('pt-BR')
   };
 
-  // Validação simples para não registrar campos em branco
+  // Validação para evitar campos vazios
   if (!data.nivel || !data.pressao) {
     alert("Por favor, preencha o nível atual e a pressão!");
     return;
   }
 
-  // Convertendo os dados para o formato que o Google Apps Script aceita nativamente sem problemas de CORS
+  // Convertendo dados para URL-encoded para evitar erros de CORS no Google Script
   const formData = new URLSearchParams();
   for (const key in data) {
     formData.append(key, data[key]);
@@ -23,20 +175,71 @@ function registerReading(gas) {
 
   fetch(SCRIPT_URL, {
     method: 'POST',
-    mode: 'no-cors', // Evita o bloqueio de CORS do navegador
+    mode: 'no-cors', 
     body: formData,
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
   })
   .then(() => {
-    showToast(`✅ Leitura de ${gas.toUpperCase()} enviada!`);
+    showToast(`✅ Leitura de ${gas.toUpperCase()} enviada com sucesso!`);
     
-    // Limpa os campos após o envio
+    // Limpa os campos após enviar
     document.getElementById(`in-${gas}-vol`).value = '';
     document.getElementById(`in-${gas}-pres`).value = '';
     document.getElementById(`in-${gas}-obs`).value = '';
     
-    // Aguarda um pequeno momento para a planilha atualizar e recarrega os dados na tela
+    // Pequeno delay para dar tempo do Google Sheets registrar antes de atualizar a tabela
     setTimeout(loadData, 1500);
   })
   .catch(err => alert("Erro ao salvar: " + err));
 }
+
+function loadData() {
+  fetch(SCRIPT_URL)
+    .then(res => res.json())
+    .then(records => {
+      if (!records || records.length === 0) {
+        document.getElementById('log-body').innerHTML = "<p style='color:#999;padding:20px'>Nenhum registro encontrado ainda.</p>";
+        return;
+      }
+
+      document.getElementById('last-update').textContent = 'Atualizado agora';
+
+      // Pega o último registro de cada gás para atualizar os medidores visuais (Gauges)
+      const lastO2 = records.find(r => r.gas === 'O2') || {};
+      const lastN2O = records.find(r => r.gas === 'N2O') || {};
+      
+      if (lastO2.nivel) updateGauge('o2', parseFloat(lastO2.nivel), parseFloat(lastO2.max || 160));
+      if (lastN2O.nivel) updateGauge('n2o', parseFloat(lastN2O.nivel), parseFloat(lastN2O.max || 36));
+
+      // Monta a tabela de histórico recente
+      let html = `<table style="width:100%;border-collapse:collapse">
+                    <tr style="background:#f8f8f8"><th style="padding:10px;text-align:left">Data</th><th>Gás</th><th>Nível</th><th>Pressão</th><th>Responsável</th></tr>`;
+      
+      records.slice(0, 15).forEach(r => {
+        html += `<tr>
+                   <td style="padding:10px;border-bottom:1px solid #eee">${r.data || ''}</td>
+                   <td style="padding:10px;border-bottom:1px solid #eee">${r.gas || ''}</td>
+                   <td style="padding:10px;border-bottom:1px solid #eee">${r.nivel || ''} pol</td>
+                   <td style="padding:10px;border-bottom:1px solid #eee">${r.pressao || ''} bar</td>
+                   <td style="padding:10px;border-bottom:1px solid #eee">${r.responsavel || ''}</td>
+                 </tr>`;
+      });
+      html += '</table>';
+      document.getElementById('log-body').innerHTML = html;
+
+      updateChart(records);
+    })
+    .catch(() => {
+      document.getElementById('log-body').innerHTML = "<p style='color:#999;padding:20px'>Nenhum registro encontrado ainda.</p>";
+    });
+}
+
+function updateChart(records) {
+  const ctx = document.getElementById('historyChart');
+  if (chart) chart.destroy();
+  
+  const o2Data = records.filter(r => r.gas === 'O2').slice(0,10).reverse();
+  const n2oData = records.filter(r => r.gas === 'N2O').slice(0,10).reverse();
+
+  // Pega as datas combinadas para o eixo X
+  const labels =
