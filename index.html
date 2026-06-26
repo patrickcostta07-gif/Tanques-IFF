@@ -1,235 +1,447 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Monitoramento Tanques - Gasoterapia IFF</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-  <style>
-    *{box-sizing:border-box;margin:0;padding:0}
-    :root{
-      --bg:#f5f6f8;--surface:#fff;--border:rgba(0,0,0,.1);
-      --text:#1a1a1a;--blue:#185FA5;--pink:#993556;
-    }
-    body{
-      font-family:system-ui,sans-serif;
-      background:var(--bg);
-      color:var(--text);
-      padding:16px 12px;
-      line-height:1.5;
-    }
-    .page{max-width:920px;margin:0 auto}
-    header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px}
-    h1{font-size:26px;font-weight:700}
-    .grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:30px}
-    @media(max-width:680px){.grid{grid-template-columns:1fr}}
-    .card{
-      background:var(--surface);border:1px solid var(--border);
-      border-radius:16px;padding:24px;box-shadow:0 4px 15px rgba(0,0,0,.06);
-    }
-    .icon{width:64px;height:64px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:34px;margin-bottom:16px}
-    .icon-o2{background:#E6F1FB;color:var(--blue)}
-    .icon-n2o{background:#FBEAF0;color:var(--pink)}
-    .gauge-wrap{margin:18px 0}
-    .gauge-top{display:flex;justify-content:space-between;font-size:14px;margin-bottom:6px}
-    .gauge-track{height:14px;background:#eee;border-radius:999px;overflow:hidden}
-    .gauge-fill{height:100%;border-radius:999px;transition:width 0.8s ease}
-    .field{margin-bottom:14px}
-    .field label{display:block;font-size:14px;color:#555;margin-bottom:6px;font-weight:500}
-    .field input,.field textarea{width:100%;padding:12px;border:1px solid var(--border);border-radius:10px;font-size:16px}
-    .btn-reg{
-      width:100%;padding:16px;border:none;border-radius:12px;
-      font-size:17px;font-weight:600;color:white;cursor:pointer;margin-top:8px
-    }
-    .btn-o2{background:var(--blue)}
-    .btn-n2o{background:var(--pink)}
-    .status-low{color:#d32f2f; font-weight:600}
-    .status-medium{color:#f57c00; font-weight:600}
-    .status-good{color:#388e3c; font-weight:600}
-    .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1e1e1e;color:white;padding:14px 24px;border-radius:12px;display:none;z-index:1000}
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Monitoramento de Tanques — Gasoterapia</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f5f6f8;--surface:#fff;--border:rgba(0,0,0,.1);--border-em:rgba(0,0,0,.2);
+  --text:#1a1a1a;--text2:#5a5a5a;--text3:#909090;
+  --radius:12px;--radius-sm:8px;
+  --blue:#185FA5;--blue-l:#E6F1FB;--blue-d:#0C447C;
+  --pink:#993556;--pink-l:#FBEAF0;--pink-d:#72243E;--pink-bar:#D4537E;
+  --ok:#3B6D11;--ok-dot:#639922;--ok-bg:#EAF3DE;
+  --warn:#854F0B;--warn-dot:#BA7517;--warn-bg:#FAEEDA;--warn-bd:#EF9F27;
+  --crit:#A32D2D;--crit-dot:#E24B4A;--crit-bg:#FCEBEB;--crit-bd:#E24B4A;
+  --teal:#0F6E56;--teal-bg:#E1F5EE;
+}
+@media(prefers-color-scheme:dark){
+  :root{
+    --bg:#141414;--surface:#1e1e1e;--border:rgba(255,255,255,.1);--border-em:rgba(255,255,255,.2);
+    --text:#f0f0f0;--text2:#aaa;--text3:#666;
+    --blue-l:#0c2a45;--blue-d:#85B7EB;
+    --pink-l:#3a1424;--pink-d:#ED93B1;
+    --ok-bg:#1a2e0a;--warn-bg:#2e1e05;--crit-bg:#2e0a0a;--teal-bg:#04342C;
+  }
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:20px 14px 56px}
+.page{max-width:800px;margin:0 auto}
+header{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:8px;margin-bottom:20px}
+.h1{font-size:20px;font-weight:600;color:var(--text)}
+.hsub{font-size:12px;color:var(--text3);margin-top:3px;display:flex;align-items:center;gap:5px}
+.live-dot{width:7px;height:7px;border-radius:50%;background:#639922;animation:pulse 2s infinite;flex-shrink:0}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.lupdate{font-size:11px;color:var(--text3)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+@media(max-width:540px){.grid{grid-template-columns:1fr}}
+.card{background:var(--surface);border:.5px solid var(--border);border-radius:var(--radius);padding:1.2rem}
+.card-hd{display:flex;align-items:center;gap:9px;margin-bottom:12px}
+.icon{width:36px;height:36px;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.icon-o2{background:var(--blue-l);color:var(--blue)}
+.icon-n2o{background:var(--pink-l);color:var(--pink)}
+.ctitle{font-size:15px;font-weight:600;color:var(--text)}
+.badge{margin-left:auto;padding:3px 9px;border-radius:var(--radius-sm);font-size:11px;font-weight:500}
+.badge-o2{background:var(--blue-l);color:var(--blue-d)}
+.badge-n2o{background:var(--pink-l);color:var(--pink-d)}
+.alert-box{padding:9px 12px;border-radius:var(--radius-sm);font-size:13px;margin-bottom:11px;display:none}
+.a-warn{background:var(--warn-bg);color:var(--warn);border:.5px solid var(--warn-bd)}
+.a-crit{background:var(--crit-bg);color:var(--crit);border:.5px solid var(--crit-bd)}
+.metrics{display:flex;gap:9px;margin-bottom:11px;flex-wrap:wrap}
+.metric{flex:1;min-width:74px;background:var(--bg);border-radius:var(--radius-sm);padding:10px 11px}
+.ml{font-size:11px;color:var(--text3);margin-bottom:3px}
+.mv{font-size:18px;font-weight:600;color:var(--text)}
+.mu{font-size:11px;font-weight:400;color:var(--text2)}
+.mc{background:var(--teal-bg)}
+.mc .ml,.mc .mv{color:var(--teal)}
+.gauge-wrap{margin-bottom:11px}
+.gauge-top{display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-bottom:5px}
+.gauge-track{height:10px;background:var(--bg);border-radius:5px;overflow:hidden}
+.gauge-fill{height:100%;border-radius:5px;transition:width .5s,background .3s}
+.srow{display:flex;align-items:center;gap:7px;font-size:12px;margin-bottom:11px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--text3);flex-shrink:0}
+.dot-ok{background:var(--ok-dot)}.dot-warn{background:var(--warn-dot)}.dot-crit{background:var(--crit-dot)}
+.st-ok{color:var(--ok)}.st-warn{color:var(--warn)}.st-crit{color:var(--crit)}
+hr.dv{border:none;border-top:.5px solid var(--border);margin:.9rem 0}
+.slabel{font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);margin-bottom:9px}
+.field{display:flex;gap:8px;margin-bottom:8px;align-items:flex-start}
+.field label{font-size:12px;color:var(--text2);width:84px;flex-shrink:0;padding-top:7px}
+.field input,.field textarea,.field select{
+  flex:1;padding:7px 10px;border:.5px solid var(--border-em);border-radius:var(--radius-sm);
+  font-size:13px;background:var(--surface);color:var(--text);outline:none;
+  font-family:inherit;transition:border-color .15s,box-shadow .15s
+}
+.field textarea{resize:vertical;min-height:56px;line-height:1.45}
+.field input:focus,.field textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(24,95,165,.13)}
+.btn-reg{
+  width:100%;margin-top:6px;padding:9px;border-radius:var(--radius-sm);border:none;
+  font-size:13px;font-weight:600;cursor:pointer;transition:background .15s,opacity .15s;font-family:inherit
+}
+.btn-reg:disabled{opacity:.5;cursor:not-allowed}
+.btn-o2{background:var(--blue);color:#fff}.btn-o2:hover:not(:disabled){background:var(--blue-d)}
+.btn-n2o{background:var(--pink);color:#fff}.btn-n2o:hover:not(:disabled){background:var(--pink-d)}
+.wide{background:var(--surface);border:.5px solid var(--border);border-radius:var(--radius);padding:1.2rem;margin-bottom:14px}
+.top-row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.tabs{display:flex;gap:5px}
+.tab{padding:4px 13px;border:.5px solid var(--border-em);border-radius:var(--radius-sm);background:transparent;color:var(--text2);font-size:12px;cursor:pointer;font-family:inherit;transition:background .12s}
+.tab:hover{background:var(--bg)}
+.tab.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+.chart-wrap{position:relative;width:100%;height:210px;margin-bottom:10px}
+.legend{display:flex;gap:18px;font-size:11px;color:var(--text2);flex-wrap:wrap}
+.legend span{display:flex;align-items:center;gap:5px}
+.ldot{width:11px;height:3px;border-radius:2px;display:inline-block}
+.log-wrap{overflow-x:auto;margin-top:10px}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{text-align:left;padding:5px 9px;font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--text3);border-bottom:.5px solid var(--border)}
+td{padding:8px 9px;border-bottom:.5px solid var(--border);color:var(--text2)}
+tr:last-child td{border-bottom:none}
+.td-t{color:var(--text3);white-space:nowrap;font-variant-numeric:tabular-nums}
+.td-g{font-weight:600}
+.td-n{font-variant-numeric:tabular-nums}
+.td-c{color:var(--teal);font-variant-numeric:tabular-nums}
+.td-obs{max-width:160px;font-size:11px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pill{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600}
+.pill-ok{background:var(--ok-bg);color:var(--ok)}
+.pill-warn{background:var(--warn-bg);color:var(--warn)}
+.pill-crit{background:var(--crit-bg);color:var(--crit)}
+.empty{text-align:center;padding:24px;font-size:12px;color:var(--text3)}
+.btn-sm{padding:5px 13px;border:.5px solid var(--border-em);border-radius:var(--radius-sm);background:transparent;color:var(--text2);font-size:11px;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:4px;transition:background .12s}
+.btn-sm:hover{background:var(--bg)}
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--surface);border:.5px solid var(--border-em);border-radius:var(--radius-sm);padding:10px 18px;font-size:13px;color:var(--text);display:none;z-index:200;white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,.12)}
+</style>
 </head>
 <body>
 <div class="page">
   <header>
     <div>
-      <h1>Monitoramento de Tanques</h1>
-      <p style="color:#666">Gasoterapia — IFF</p>
+      <div class="h1">Monitoramento de Tanques</div>
+      <div class="hsub"><span class="live-dot"></span>Gasoterapia — O₂ e N₂O</div>
     </div>
-    <div style="text-align:right">
-      <small id="last-update">Buscando dados...</small><br>
-      <button onclick="loadData()" style="margin-top:6px;padding:8px 14px">Atualizar</button>
-    </div>
+    <div class="lupdate" id="last-update">Carregando...</div>
   </header>
 
   <div class="grid">
     <div class="card">
-      <div class="icon icon-o2">🫁</div>
-      <h3>Oxigênio (O₂) Médico</h3>
-      <div class="gauge-wrap">
-        <div class="gauge-top"><span>Nível</span><span id="o2-pct">0%</span></div>
-        <div class="gauge-track"><div class="gauge-fill" id="o2-bar" style="width:0%;background:#185FA5"></div></div>
+      <div class="card-hd">
+        <div class="icon icon-o2">🫁</div>
+        <span class="ctitle">Oxigênio (O₂)</span>
+        <span class="badge badge-o2">Médico</span>
       </div>
-      <div class="field"><label>Máx (pol)</label><input type="number" id="in-o2-max" value="160" step="0.1"></div>
-      <div class="field"><label>Nível atual (pol)</label><input type="number" id="in-o2-vol" step="0.1" placeholder="Ex: 142.5"></div>
-      <div class="field"><label>Pressão (bar)</label><input type="number" id="in-o2-pres" step="0.1" placeholder="Ex: 9.5"></div>
+      <div id="alert-o2" class="alert-box"></div>
+      <div class="metrics">
+        <div class="metric"><div class="ml">Nível atual</div><div class="mv" id="o2-vol">—<span class="mu"> pol</span></div></div>
+        <div class="metric"><div class="ml">Pressão</div><div class="mv" id="o2-pres">—<span class="mu"> bar</span></div></div>
+        <div class="metric mc"><div class="ml">Consumo</div><div class="mv" id="o2-cons">—</div></div>
+      </div>
+      <div class="gauge-wrap">
+        <div class="gauge-top"><span>Nível do tanque</span><span id="o2-pct">—%</span></div>
+        <div class="gauge-track"><div class="gauge-fill" id="o2-bar" style="width:0%;background:#378ADD"></div></div>
+      </div>
+      <div class="srow"><div class="dot" id="o2-dot"></div><span id="o2-status" style="color:var(--text3)">Sem dados</span></div>
+      <hr class="dv">
+      <div class="slabel">Registrar leitura</div>
       <div class="field"><label>Responsável</label><input type="text" id="in-o2-user" placeholder="Seu nome"></div>
-      <div class="field"><label>Observação</label><textarea id="in-o2-obs" rows="2" placeholder="Observações..."></textarea></div>
-      <button class="btn-reg btn-o2" onclick="registerReading('o2')">Registrar Leitura O₂</button>
+      <div class="field"><label>Horário</label><input type="time" id="in-o2-time"></div>
+      <div class="field"><label>Nível (pol)</label><input type="number" id="in-o2-vol" min="0" step="0.1" placeholder="ex: 120"></div>
+      <div class="field"><label>Pressão (bar)</label><input type="number" id="in-o2-pres" min="0" step="0.1" placeholder="ex: 10"></div>
+      <div class="field"><label>Máx (pol)</label><input type="number" id="in-o2-max" min="0.1" step="0.1" value="160"></div>
+      <div class="field"><label>Observação</label><textarea id="in-o2-obs" placeholder="Troca de cilindro, vazamento..."></textarea></div>
+      <button class="btn-reg btn-o2" id="btn-o2" onclick="registerReading('o2')">Registrar leitura</button>
     </div>
 
     <div class="card">
-      <div class="icon icon-n2o">💨</div>
-      <h3>Óxido Nitroso (N₂O)</h3>
-      <div class="gauge-wrap">
-        <div class="gauge-top"><span>Nível</span><span id="n2o-pct">0%</span></div>
-        <div class="gauge-track"><div class="gauge-fill" id="n2o-bar" style="width:0%;background:#993556"></div></div>
+      <div class="card-hd">
+        <div class="icon icon-n2o">💨</div>
+        <span class="ctitle">Óxido Nitroso (N₂O)</span>
+        <span class="badge badge-n2o">Anestésico</span>
       </div>
-      <div class="field"><label>Máx (pol)</label><input type="number" id="in-n2o-max" value="36" step="0.1"></div>
-      <div class="field"><label>Nível atual (pol)</label><input type="number" id="in-n2o-vol" step="0.1" placeholder="Ex: 28.0"></div>
-      <div class="field"><label>Pressão (bar)</label><input type="number" id="in-n2o-pres" step="0.1" placeholder="Ex: 10"></div>
+      <div id="alert-n2o" class="alert-box"></div>
+      <div class="metrics">
+        <div class="metric"><div class="ml">Nível atual</div><div class="mv" id="n2o-vol">—<span class="mu"> pol</span></div></div>
+        <div class="metric"><div class="ml">Pressão</div><div class="mv" id="n2o-pres">—<span class="mu"> bar</span></div></div>
+        <div class="metric mc"><div class="ml">Consumo</div><div class="mv" id="n2o-cons">—</div></div>
+      </div>
+      <div class="gauge-wrap">
+        <div class="gauge-top"><span>Nível do tanque</span><span id="n2o-pct">—%</span></div>
+        <div class="gauge-track"><div class="gauge-fill" id="n2o-bar" style="width:0%;background:#D4537E"></div></div>
+      </div>
+      <div class="srow"><div class="dot" id="n2o-dot"></div><span id="n2o-status" style="color:var(--text3)">Sem dados</span></div>
+      <hr class="dv">
+      <div class="slabel">Registrar leitura</div>
       <div class="field"><label>Responsável</label><input type="text" id="in-n2o-user" placeholder="Seu nome"></div>
-      <div class="field"><label>Observação</label><textarea id="in-n2o-obs" rows="2" placeholder="Observações..."></textarea></div>
-      <button class="btn-reg btn-n2o" onclick="registerReading('n2o')">Registrar Leitura N₂O</button>
+      <div class="field"><label>Horário</label><input type="time" id="in-n2o-time"></div>
+      <div class="field"><label>Nível (pol)</label><input type="number" id="in-n2o-vol" min="0" step="0.1" placeholder="ex: 28"></div>
+      <div class="field"><label>Pressão (bar)</label><input type="number" id="in-n2o-pres" min="0" step="0.1" placeholder="ex: 10"></div>
+      <div class="field"><label>Máx (pol)</label><input type="number" id="in-n2o-max" min="0.1" step="0.1" value="36"></div>
+      <div class="field"><label>Observação</label><textarea id="in-n2o-obs" placeholder="Troca de cilindro, vazamento..."></textarea></div>
+      <button class="btn-reg btn-n2o" id="btn-n2o" onclick="registerReading('n2o')">Registrar leitura</button>
     </div>
   </div>
 
-  <div style="background:white;padding:20px;border-radius:16px;border:1px solid #ddd;margin-bottom:20px">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-      <h3>Gráfico de Níveis</h3>
-      <button onclick="exportCSV()">Exportar CSV</button>
+  <div class="wide">
+    <div class="top-row">
+      <div class="slabel" style="margin:0">Histórico</div>
+      <div class="tabs">
+        <button class="tab active" onclick="setChart('nivel',this)">Nível</button>
+        <button class="tab" onclick="setChart('consumo',this)">Consumo</button>
+      </div>
     </div>
-    <canvas id="historyChart" height="140"></canvas>
+    <div class="chart-wrap"><canvas id="histChart"></canvas></div>
+    <div class="legend">
+      <span><span class="ldot" style="background:#378ADD"></span>Oxigênio (O₂)</span>
+      <span><span class="ldot" style="background:#D4537E"></span>Óxido Nitroso (N₂O)</span>
+    </div>
   </div>
 
-  <div style="background:white;padding:20px;border-radius:16px;border:1px solid #ddd">
-    <h3>Registros Recentes</h3>
-    <div id="log-body" style="max-height:500px;overflow:auto"></div>
+  <div class="wide">
+    <div class="top-row">
+      <div class="slabel" style="margin:0">Registros</div>
+      <button class="btn-sm" onclick="loadData()">↻ Atualizar</button>
+    </div>
+    <div id="log-empty" class="empty">Carregando...</div>
+    <div class="log-wrap">
+      <table id="log-table" style="display:none">
+        <thead><tr>
+          <th>Data</th><th>Hora</th><th>Responsável</th><th>Gás</th>
+          <th>Nível</th><th>Pressão</th><th>Consumo</th><th>Status</th><th>Observação</th>
+        </tr></thead>
+        <tbody id="log-body"></tbody>
+      </table>
+    </div>
   </div>
 </div>
 
 <div class="toast" id="toast"></div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script>
-// URL corrigida sem duplicações
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxv18-9lVZK5BWMC3oe0-FiHzphZGtkEPxopz57E1zxNLL_Pt-Z_OLQDCS3O3of4OoV/exec";
+// URL DO SEU GOOGLE APPS SCRIPT ATUALIZADO
+const GS_URL = 'https://script.google.com/macros/s/AKfycbxv18-9lVZK5BWMC3oe0-FiHzphZGtkEPxopz57E1zxNLL_Pt-Z_OLQDCS3O3of4OoV/exec';
+
+let logs = [];
 let chart;
+let chartMode = 'nivel';
 
-function showToast(msg) {
-  const toast = document.getElementById('toast');
-  toast.textContent = msg;
-  toast.style.display = 'block';
-  setTimeout(function(){ toast.style.display = 'none'; }, 2800);
+function toast(msg, err) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.color = err ? '#A32D2D' : '';
+  el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 3200);
 }
 
-function updateGauge(gas, nivel, max) {
-  const pct = max > 0 ? Math.min(Math.round((nivel / max) * 100), 100) : 0;
-  const bar = document.getElementById(gas + '-bar');
-  const txt = document.getElementById(gas + '-pct');
-  bar.style.width = pct + '%';
-  txt.textContent = pct + '%';
-  
-  if (pct < 25) bar.style.background = '#d32f2f';
-  else if (pct < 50) bar.style.background = '#f57c00';
-  else bar.style.background = gas === 'o2' ? '#185FA5' : '#993556';
+function nowTime() {
+  const n = new Date();
+  return n.getHours().toString().padStart(2,'0') + ':' + n.getMinutes().toString().padStart(2,'0');
+}
+function nowDate() { return new Date().toLocaleDateString('pt-BR'); }
+
+function initInputs() {
+  document.getElementById('in-o2-time').value  = nowTime();
+  document.getElementById('in-n2o-time').value = nowTime();
 }
 
-function registerReading(gas) {
-  const data = {
-    gas: gas.toUpperCase(),
-    max: document.getElementById('in-' + gas + '-max').value,
-    nivel: document.getElementById('in-' + gas + '-vol').value,
-    pressao: document.getElementById('in-' + gas + '-pres').value,
-    responsavel: document.getElementById('in-' + gas + '-user').value || "Não informado",
-    observacao: document.getElementById('in-' + gas + '-obs').value,
-    data: new Date().toLocaleString('pt-BR')
-  };
+function statusInfo(pct) {
+  pct = Number(pct);
+  if (pct <= 15) return { label:'Crítico', dot:'dot-crit', st:'st-crit', stTxt:'Nível crítico — reposição urgente', msg:'⚠ Abaixo de 15% — solicite reposição imediatamente.', alertCls:'a-crit', pillCls:'pill-crit' };
+  if (pct <= 30) return { label:'Baixo',   dot:'dot-warn', st:'st-warn', stTxt:'Nível baixo — agendar reposição',   msg:'⚡ Abaixo de 30% — programe a reposição.',            alertCls:'a-warn', pillCls:'pill-warn' };
+  return           { label:'Adequado', dot:'dot-ok',  st:'st-ok',  stTxt:'Nível adequado',                      msg:'',                                                         alertCls:'',       pillCls:'pill-ok'   };
+}
 
-  if (!data.nivel || !data.pressao) {
-    alert("Por favor, preencha o nível atual e a pressão!");
+function applyTankUI(tank, entry) {
+  const color = tank === 'o2' ? '#378ADD' : '#D4537E';
+  const vol   = parseFloat(entry.vol);
+  const pres  = parseFloat(entry.pres);
+  const pct   = parseInt(entry.pct);
+  const cons  = (entry.consumption !== '' && entry.consumption != null) ? parseFloat(entry.consumption) : null;
+  const info  = statusInfo(pct);
+
+  document.getElementById(tank+'-vol').innerHTML  = vol.toFixed(1) + '<span class="mu"> pol</span>';
+  document.getElementById(tank+'-pres').innerHTML = pres.toFixed(1) + '<span class="mu"> bar</span>';
+  document.getElementById(tank+'-pct').textContent = pct + '%';
+
+  const bar = document.getElementById(tank+'-bar');
+  bar.style.width      = pct + '%';
+  bar.style.background = pct <= 15 ? '#E24B4A' : pct <= 30 ? '#EF9F27' : color;
+
+  document.getElementById(tank+'-dot').className = 'dot ' + info.dot;
+  const stEl = document.getElementById(tank+'-status');
+  stEl.textContent = info.stTxt; stEl.className = info.st;
+
+  const alertEl = document.getElementById('alert-' + tank);
+  if (info.msg) { alertEl.className = 'alert-box ' + info.alertCls; alertEl.textContent = info.msg; alertEl.style.display = 'block'; }
+  else alertEl.style.display = 'none';
+
+  const consEl = document.getElementById(tank+'-cons');
+  if (cons === null || isNaN(cons)) { consEl.innerHTML = '—'; consEl.style.color = ''; }
+  else if (cons < 0) { consEl.innerHTML = '+' + Math.abs(cons).toFixed(1) + '<span class="mu"> pol ↑</span>'; consEl.style.color = '#185FA5'; }
+  else { consEl.innerHTML = cons.toFixed(1) + '<span class="mu"> pol</span>'; consEl.style.color = '#0F6E56'; }
+}
+
+async function registerReading(tank) {
+  const timeVal = document.getElementById('in-'+tank+'-time').value || nowTime();
+  const vol     = parseFloat(document.getElementById('in-'+tank+'-vol').value);
+  const pres    = parseFloat(document.getElementById('in-'+tank+'-pres').value);
+  const max     = parseFloat(document.getElementById('in-'+tank+'-max').value);
+  const obs     = document.getElementById('in-'+tank+'-obs').value.trim();
+  const user    = document.getElementById('in-'+tank+'-user').value.trim() || 'Não informado';
+
+  if (isNaN(vol) || isNaN(pres) || isNaN(max) || max <= 0) {
+    toast('Preencha nível, pressão e capacidade máxima corretamente.', true);
     return;
   }
 
-  const formData = new URLSearchParams();
-  for (const key in data) {
-    formData.append(key, data[key]);
-  }
+  const pct  = Math.min(100, Math.round((vol / max) * 100));
+  const info = statusInfo(pct);
+  const prev = [...logs].filter(l => l.tank === tank).pop();
+  const consumption = prev ? (parseFloat(prev.vol) - vol) : '';
 
-  fetch(SCRIPT_URL, {
-    method: 'POST',
-    mode: 'no-cors', 
-    body: formData,
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-  })
-  .then(function() {
-    showToast('Leitura enviada com sucesso!');
-    document.getElementById('in-' + gas + '-vol').value = '';
-    document.getElementById('in-' + gas + '-pres').value = '';
-    document.getElementById('in-' + gas + '-obs').value = '';
-    setTimeout(loadData, 1500);
-  })
-  .catch(function(err) { alert("Erro ao salvar: " + err); });
-}
+  const entry = { date: nowDate(), time: timeVal, user, tank, vol, pres, max, pct, status: info.label, consumption, obs };
 
-function loadData() {
-  // Adicionado o parâmetro de redirect para puxar os dados corretamente sem erro de CORS
-  fetch(SCRIPT_URL, { method: 'GET', redirect: 'follow' })
-    .then(res => res.json())
-    .then(records => {
-      if (!records || records.length === 0) {
-        document.getElementById('log-body').innerHTML = "<p style='color:#999;padding:20px'>Nenhum registro encontrado ainda.</p>";
-        return;
-      }
-      document.getElementById('last-update').textContent = 'Atualizado agora';
-      
-      const lastO2 = records.find(r => r.gas === 'O2') || {};
-      const lastN2O = records.find(r => r.gas === 'N2O') || {};
-      
-      if (lastO2.nivel) updateGauge('o2', parseFloat(lastO2.nivel), parseFloat(lastO2.max || 160));
-      if (lastN2O.nivel) updateGauge('n2o', parseFloat(lastN2O.nivel), parseFloat(lastN2O.max || 36));
+  const btn = document.getElementById('btn-' + tank);
+  btn.disabled = true; btn.textContent = 'Salvando...';
 
-      let html = '<table style="width:100%;border-collapse:collapse"><tr style="background:#f8f8f8"><th style="padding:10px;text-align:left">Data</th><th>Gás</th><th>Nível</th><th>Pressão</th><th>Responsável</th></tr>';
-      records.slice(0, 15).forEach(r => {
-        html += '<tr><td style="padding:10px;border-bottom:1px solid #eee">' + (r.data || '') + '</td><td style="padding:10px;border-bottom:1px solid #eee">' + (r.gas || '') + '</td><td style="padding:10px;border-bottom:1px solid #eee">' + (r.nivel || '') + ' pol</td><td style="padding:10px;border-bottom:1px solid #eee">' + (r.pressao || '') + ' bar</td><td style="padding:10px;border-bottom:1px solid #eee">' + (r.responsavel || '') + '</td></tr>';
-      });
-      html += '</table>';
-      document.getElementById('log-body').innerHTML = html;
-      
-      updateChart(records);
-    })
-    .catch((err) => {
-      document.getElementById('log-body').innerHTML = "<p style='color:#999;padding:20px'>Aguardando dados ou erro na comunicação...</p>";
-      console.error(err);
+  try {
+    const params = new URLSearchParams({
+      action: 'write',
+      date: entry.date, time: entry.time, user: entry.user, tank: entry.tank,
+      vol: entry.vol, pres: entry.pres, max: entry.max, pct: entry.pct,
+      consumption: entry.consumption, status: entry.status, obs: entry.obs
     });
+    const img = new Image();
+    img.src = GS_URL + '?' + params.toString();
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
+    logs.push(entry);
+    applyTankUI(tank, entry);
+    document.getElementById('last-update').textContent = 'Última atualização: ' + entry.date + ' ' + entry.time + ' por ' + user;
+    renderChart(); renderTable();
+    document.getElementById('in-'+tank+'-vol').value  = '';
+    document.getElementById('in-'+tank+'-pres').value = '';
+    document.getElementById('in-'+tank+'-obs').value  = '';
+    document.getElementById('in-'+tank+'-time').value = nowTime();
+    toast('✓ Leitura salva no Google Sheets!');
+  } catch(e) {
+    toast('Erro ao salvar. Verifique a conexão.', true);
+  }
+  btn.disabled = false; btn.textContent = 'Registrar leitura';
 }
 
-function updateChart(records) {
-  const ctx = document.getElementById('historyChart');
-  if (chart) chart.destroy();
-  
-  const o2Data = records.filter(r => r.gas === 'O2').slice(0,10).reverse();
-  const n2oData = records.filter(r => r.gas === 'N2O').slice(0,10).reverse();
-  
-  // Combina as datas para gerar o eixo X do gráfico de forma limpa
-  const labels = o2Data.map(r => r.data ? r.data.split(' ')[0] : '');
-  
+async function loadData() {
+  document.getElementById('log-empty').style.display = 'block';
+  document.getElementById('log-empty').textContent   = 'Carregando...';
+  document.getElementById('log-table').style.display = 'none';
+  try {
+    const res  = await fetch(GS_URL + '?_=' + Date.now());
+    const data = await res.json();
+    if (!data.rows || data.rows.length === 0) {
+      logs = []; document.getElementById('log-empty').textContent = 'Nenhum registro ainda.';
+      renderChart(); return;
+    }
+    logs = data.rows.map(r => ({
+      date: r[0], time: r[1], user: r[2], tank: r[3],
+      vol: parseFloat(r[4]), pres: parseFloat(r[5]),
+      pct: parseInt(r[6]), consumption: r[7], status: r[8], obs: r[9] || '', max: r[10] || null
+    })).filter(l => l.tank === 'o2' || l.tank === 'n2o');
+
+    ['o2','n2o'].forEach(tank => {
+      const last = [...logs].filter(l => l.tank === tank).pop();
+      if (last) applyTankUI(tank, last);
+      const withMax = [...logs].filter(l => l.tank === tank && l.max).pop();
+      if (withMax) document.getElementById('in-'+tank+'-max').value = withMax.max;
+    });
+
+    const last = logs[logs.length - 1];
+    if (last) document.getElementById('last-update').textContent = 'Última atualização: ' + last.date + ' ' + last.time + (last.user ? ' por ' + last.user : '');
+
+    renderChart(); renderTable();
+  } catch(e) {
+    document.getElementById('log-empty').textContent = 'Erro ao carregar dados. Verifique a conexão.';
+  }
+}
+
+function setChart(mode, btn) {
+  chartMode = mode;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  renderChart();
+}
+
+function renderChart() {
+  if (!chart) return;
+  const o2L  = logs.filter(l => l.tank === 'o2');
+  const n2oL = logs.filter(l => l.tank === 'n2o');
+  const times = [...new Set(logs.map(l => l.date + ' ' + l.time))].sort();
+  const labels = times.map(t => t.split(' ')[1]);
+  let o2D, n2oD;
+  if (chartMode === 'nivel') {
+    o2D  = times.map(t => { const e = o2L.find(l => l.date+' '+l.time === t);  return e ? parseFloat(e.vol) : null; });
+    n2oD = times.map(t => { const e = n2oL.find(l => l.date+' '+l.time === t); return e ? parseFloat(e.vol) : null; });
+    chart.options.scales.y.ticks.callback = v => v + '"';
+  } else {
+    o2D  = times.map(t => { const e = o2L.find(l => l.date+' '+l.time === t);  return (e && e.consumption !== '' && e.consumption != null) ? parseFloat(e.consumption) : null; });
+    n2oD = times.map(t => { const e = n2oL.find(l => l.date+' '+l.time === t); return (e && e.consumption !== '' && e.consumption != null) ? parseFloat(e.consumption) : null; });
+    chart.options.scales.y.ticks.callback = v => v.toFixed(1) + '"';
+  }
+  chart.data.labels = labels;
+  chart.data.datasets[0].data = o2D;
+  chart.data.datasets[1].data = n2oD;
+  chart.update();
+}
+
+function renderTable() {
+  const empty = document.getElementById('log-empty');
+  const table = document.getElementById('log-table');
+  const tbody = document.getElementById('log-body');
+  if (logs.length === 0) { empty.style.display = 'block'; table.style.display = 'none'; return; }
+  empty.style.display = 'none'; table.style.display = 'table';
+  tbody.innerHTML = [...logs].reverse().map(l => {
+    const gName  = l.tank === 'o2' ? 'O₂' : 'N₂O';
+    const gColor = l.tank === 'o2' ? '#185FA5' : '#993556';
+    const info   = statusInfo(l.pct);
+    const cons   = (l.consumption !== '' && l.consumption != null) ? parseFloat(l.consumption) : null;
+    let consCell;
+    if (cons === null || isNaN(cons)) consCell = '<td class="td-t">—</td>';
+    else if (cons < 0) consCell = `<td class="td-n" style="color:#185FA5">+${Math.abs(cons).toFixed(1)}" ↑</td>`;
+    else consCell = `<td class="td-c">${cons.toFixed(1)}"</td>`;
+    const obsCell = l.obs ? `<td class="td-obs" title="${String(l.obs).replace(/"/g,'&quot;')}">${l.obs}</td>` : '<td class="td-t">—</td>';
+    return `<tr>
+      <td class="td-t">${l.date}</td><td class="td-t">${l.time}</td>
+      <td>${l.user||'—'}</td>
+      <td class="td-g" style="color:${gColor}">${gName}</td>
+      <td class="td-n">${parseFloat(l.vol).toFixed(1)}"</td>
+      <td class="td-n">${parseFloat(l.pres).toFixed(1)}</td>
+      ${consCell}
+      <td><span class="pill ${info.pillCls}">${l.status}</span></td>
+      ${obsCell}
+    </tr>`;
+  }).join('');
+}
+
+function initChart() {
+  const ctx = document.getElementById('histChart').getContext('2d');
   chart = new Chart(ctx, {
     type: 'line',
-    data: {
-      labels: labels,
-      datasets: [
-        { label: 'O₂ (pol)', data: o2Data.map(r => r.nivel), borderColor: '#185FA5', tension: 0.3 },
-        { label: 'N₂O (pol)', data: n2oData.map(r => r.nivel), borderColor: '#993556', tension: 0.3 }
-      ]
-    },
-    options: { responsive: true, plugins: { legend: { position: 'top' } } }
+    data: { labels: [], datasets: [
+      { label:'O₂',  data:[], borderColor:'#378ADD', backgroundColor:'rgba(55,138,221,.07)', tension:.3, pointRadius:4, pointBackgroundColor:'#378ADD', fill:true, spanGaps:true },
+      { label:'N₂O', data:[], borderColor:'#D4537E', backgroundColor:'rgba(212,83,126,.07)', tension:.3, pointRadius:4, pointBackgroundColor:'#D4537E', fill:true, spanGaps:true }
+    ]},
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ display:false } },
+      scales:{
+        x:{ grid:{ color:'rgba(128,128,128,.07)' }, ticks:{ font:{ size:10 }, color:'#888' } },
+        y:{ grid:{ color:'rgba(128,128,128,.07)' }, ticks:{ font:{ size:10 }, color:'#888', callback: v => v+'"' }, beginAtZero:true }
+      }
+    }
   });
 }
 
-function exportCSV() {
-  window.open(SCRIPT_URL + '?format=csv', '_blank');
-}
-window.onload = loadData;
+initChart();
+initInputs();
+loadData();
+setInterval(loadData, 30000);
 </script>
 </body>
 </html>
