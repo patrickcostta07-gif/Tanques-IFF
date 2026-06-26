@@ -43,9 +43,6 @@
     }
     .btn-o2{background:var(--blue)}
     .btn-n2o{background:var(--pink)}
-    .status-low{color:#d32f2f; font-weight:600}
-    .status-medium{color:#f57c00; font-weight:600}
-    .status-good{color:#388e3c; font-weight:600}
     .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1e1e1e;color:white;padding:14px 24px;border-radius:12px;display:none;z-index:1000}
   </style>
 </head>
@@ -57,7 +54,7 @@
       <p style="color:#666">Gasoterapia — IFF</p>
     </div>
     <div style="text-align:right">
-      <small id="last-update">Atualizado agora</small><br>
+      <small id="last-update">Carregando dados...</small><br>
       <button onclick="loadData()" style="margin-top:6px;padding:8px 14px">Atualizar</button>
     </div>
   </header>
@@ -178,8 +175,10 @@ function loadData() {
         return;
       }
       document.getElementById('last-update').textContent = 'Atualizado agora';
+      
       const lastO2 = records.find(r => r.gas === 'O2') || {};
       const lastN2O = records.find(r => r.gas === 'N2O') || {};
+      
       if (lastO2.nivel) updateGauge('o2', parseFloat(lastO2.nivel), parseFloat(lastO2.max || 160));
       if (lastN2O.nivel) updateGauge('n2o', parseFloat(lastN2O.nivel), parseFloat(lastN2O.max || 36));
 
@@ -199,9 +198,13 @@ function loadData() {
 function updateChart(records) {
   const ctx = document.getElementById('historyChart');
   if (chart) chart.destroy();
+  
   const o2Data = records.filter(r => r.gas === 'O2').slice(0,10).reverse();
   const n2oData = records.filter(r => r.gas === 'N2O').slice(0,10).reverse();
+  
+  // Extrai apenas as datas do oxigênio para servir de legenda no eixo X
   const labels = o2Data.map(r => r.data ? r.data.split(' ')[0] : '');
+  
   chart = new Chart(ctx, {
     type: 'line',
     data: {
