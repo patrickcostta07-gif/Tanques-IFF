@@ -164,7 +164,7 @@ tr:last-child td{border-bottom:none}
       <div class="card-hd">
         <div class="icon icon-o2">🫁</div>
         <span class="ctitle">Oxigênio (O₂)</span>
-        <span class="badge badge-o2">Médico</span>
+        <span class="badge badge-o2">Medicinal</span>
       </div>
       <div id="alert-o2" class="alert-box"></div>
       <div class="metrics">
@@ -181,9 +181,9 @@ tr:last-child td{border-bottom:none}
       <div class="slabel">Registrar leitura</div>
       <div class="field"><label>Responsável</label><input type="text" id="in-o2-user" placeholder="Seu nome"></div>
       <div class="field"><label>Horário</label><input type="time" id="in-o2-time"></div>
-      <div class="field"><label>Nível (pol)</label><input type="number" id="in-o2-vol" min="0" step="0.1" placeholder="ex: 120"></div>
+      <div class="field"><label>Nível (pol)</label><input type="number" id="in-o2-vol" min="0" max="160" step="0.1" placeholder="ex: 120"></div>
       <div class="field"><label>Pressão (bar)</label><input type="number" id="in-o2-pres" min="0" step="0.1" placeholder="ex: 10"></div>
-      <div class="field"><label>Máx (pol)</label><input type="number" id="in-o2-max" min="0.1" step="0.1" placeholder="160"></div>
+      <div class="field"><label>Máx (pol)</label><input type="number" id="in-o2-max" min="160" max="160" step="0.1" value="160" readonly></div>
       <div class="field"><label>Observação</label><textarea id="in-o2-obs" placeholder="Troca de cilindro, vazamento..."></textarea></div>
       <button class="btn-reg btn-o2" id="btn-o2" onclick="registerReading('o2')">Registrar leitura</button>
     </div>
@@ -210,9 +210,9 @@ tr:last-child td{border-bottom:none}
       <div class="slabel">Registrar leitura</div>
       <div class="field"><label>Responsável</label><input type="text" id="in-n2o-user" placeholder="Seu nome"></div>
       <div class="field"><label>Horário</label><input type="time" id="in-n2o-time"></div>
-      <div class="field"><label>Nível (pol)</label><input type="number" id="in-n2o-vol" min="0" step="0.1" placeholder="ex: 28"></div>
+      <div class="field"><label>Nível (pol)</label><input type="number" id="in-n2o-vol" min="0" max="36" step="0.1" placeholder="ex: 28"></div>
       <div class="field"><label>Pressão (bar)</label><input type="number" id="in-n2o-pres" min="0" step="0.1" placeholder="ex: 10"></div>
-      <div class="field"><label>Máx (pol)</label><input type="number" id="in-n2o-max" min="0.1" step="0.1" placeholder="36"></div>
+      <div class="field"><label>Máx (pol)</label><input type="number" id="in-n2o-max" min="36" max="36" step="0.1" value="36" readonly></div>
       <div class="field"><label>Observação</label><textarea id="in-n2o-obs" placeholder="Troca de cilindro, vazamento..."></textarea></div>
       <button class="btn-reg btn-n2o" id="btn-n2o" onclick="registerReading('n2o')">Registrar leitura</button>
     </div>
@@ -330,6 +330,8 @@ function nowDate() {
 function initInputs() {
   document.getElementById('in-o2-time').value  = nowTime();
   document.getElementById('in-n2o-time').value = nowTime();
+  document.getElementById('in-o2-max').value = 160;
+  document.getElementById('in-n2o-max').value = 36;
 }
 
 function statusInfo(pct) {
@@ -432,12 +434,17 @@ async function registerReading(tank) {
   const timeVal = document.getElementById('in-'+tank+'-time').value || nowTime();
   const vol     = parseFloat(document.getElementById('in-'+tank+'-vol').value);
   const pres    = parseFloat(document.getElementById('in-'+tank+'-pres').value);
-  const max     = parseFloat(document.getElementById('in-'+tank+'-max').value);
+  const fixedMax = tank === 'o2' ? 160 : 36;
+  const max     = fixedMax;
+  document.getElementById('in-'+tank+'-max').value = fixedMax;
   const obs     = document.getElementById('in-'+tank+'-obs').value.trim();
   const user    = document.getElementById('in-'+tank+'-user').value.trim() || 'Não informado';
 
-  if (isNaN(vol) || isNaN(pres) || isNaN(max) || max <= 0) {
-    toast('Preencha nível, pressão e capacidade máxima corretamente.', true); return;
+  if (isNaN(vol) || isNaN(pres)) {
+    toast('Preencha nível e pressão corretamente.', true); return;
+  }
+  if (vol < 0 || vol > max) {
+    toast('O nível máximo permitido para este tanque é ' + max + ' pol.', true); return;
   }
 
   const pct  = Math.min(100, Math.round((vol / max) * 100));
@@ -508,8 +515,8 @@ async function loadData() {
 
     logs = data.rows.map(r => ({
       date: r[0], time: r[1], user: r[2], tank: r[3],
-      vol: parseFloat(r[4]), pres: parseFloat(r[5]),
-      pct: parseInt(r[6]), consumption: r[7], status: r[8], obs: r[9] || '', max: r[10] || null
+      vol: parseFloat(r[4]), pres: parseFloat(r[5]), max: r[6] || null,
+      pct: parseInt(r[7]), consumption: r[8], status: r[9], obs: r[10] || ''
     })).filter(l => l.tank === 'o2' || l.tank === 'n2o');
 
     saveOfflineLogs(logs);
@@ -517,8 +524,7 @@ async function loadData() {
     ['o2','n2o'].forEach(tank => {
       const last = [...logs].filter(l => l.tank === tank).pop();
       if (last) applyTankUI(tank, last);
-      const withMax = [...logs].filter(l => l.tank === tank && l.max).pop();
-      if (withMax) document.getElementById('in-'+tank+'-max').value = withMax.max;
+      document.getElementById('in-'+tank+'-max').value = tank === 'o2' ? 160 : 36;
     });
 
     const last = logs[logs.length - 1];
