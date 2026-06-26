@@ -234,12 +234,39 @@ function loadData() {
     });
 }
 
-function updateChart(records) {
-  const ctx = document.getElementById('historyChart');
-  if (chart) chart.destroy();
-  
-  const o2Data = records.filter(r => r.gas === 'O2').slice(0,10).reverse();
-  const n2oData = records.filter(r => r.gas === 'N2O').slice(0,10).reverse();
+function registerReading(gas) {
+  const data = {
+    gas: gas.toUpperCase(),
+    max: document.getElementById(`in-${gas}-max`).value,
+    nivel: document.getElementById(`in-${gas}-vol`).value,
+    pressao: document.getElementById(`in-${gas}-pres`).value,
+    responsavel: document.getElementById(`in-${gas}-user`).value || "Não informado",
+    observacao: document.getElementById(`in-${gas}-obs`).value,
+    data: new Date().toLocaleString('pt-BR')
+  };
 
-  // Pega as datas combinadas para o eixo X
-  const labels =
+  if (!data.nivel || !data.pressao) {
+    alert("Por favor, preencha o nível atual e a pressão!");
+    return;
+  }
+
+  const formData = new URLSearchParams();
+  for (const key in data) {
+    formData.append(key, data[key]);
+  }
+
+  fetch(SCRIPT_URL, {
+    method: 'POST',
+    mode: 'no-cors',
+    body: formData,
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+  })
+  .then(() => {
+    showToast(`✅ Leitura de ${gas.toUpperCase()} enviada!`);
+    document.getElementById(`in-${gas}-vol`).value = '';
+    document.getElementById(`in-${gas}-pres`).value = '';
+    document.getElementById(`in-${gas}-obs`).value = '';
+    setTimeout(loadData, 1500);
+  })
+  .catch(err => alert("Erro ao salvar: " + err));
+}
