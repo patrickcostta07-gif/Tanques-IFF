@@ -1,8 +1,3 @@
-<script>
-// ... (o resto do HTML permanece o mesmo)
-
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxv18-9lVZK5BWMC3oe0-FiHzphZGtkEPxopz57E1zxNLL_Pt-Z_OLQDCS3O3of4OoV/exec";
-
 function registerReading(gas) {
   const data = {
     gas: gas.toUpperCase(),
@@ -14,27 +9,34 @@ function registerReading(gas) {
     data: new Date().toLocaleString('pt-BR')
   };
 
+  // Validação simples para não registrar campos em branco
+  if (!data.nivel || !data.pressao) {
+    alert("Por favor, preencha o nível atual e a pressão!");
+    return;
+  }
+
+  // Convertendo os dados para o formato que o Google Apps Script aceita nativamente sem problemas de CORS
+  const formData = new URLSearchParams();
+  for (const key in data) {
+    formData.append(key, data[key]);
+  }
+
   fetch(SCRIPT_URL, {
     method: 'POST',
-    body: JSON.stringify(data),
-    headers: { 'Content-Type': 'application/json' }
+    mode: 'no-cors', // Evita o bloqueio de CORS do navegador
+    body: formData,
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
   })
-  .then(res => res.text())
-  .then(result => {
-    if (result.includes("OK") || result.includes("Success")) {
-      showToast(`✅ Leitura de ${gas.toUpperCase()} registrada com sucesso!`);
-      loadData();
-      // Limpa campos
-      document.getElementById(`in-${gas}-vol`).value = '';
-      document.getElementById(`in-${gas}-pres`).value = '';
-      document.getElementById(`in-${gas}-obs`).value = '';
-    } else {
-      alert("Resposta do servidor: " + result);
-    }
+  .then(() => {
+    showToast(`✅ Leitura de ${gas.toUpperCase()} enviada!`);
+    
+    // Limpa os campos após o envio
+    document.getElementById(`in-${gas}-vol`).value = '';
+    document.getElementById(`in-${gas}-pres`).value = '';
+    document.getElementById(`in-${gas}-obs`).value = '';
+    
+    // Aguarda um pequeno momento para a planilha atualizar e recarrega os dados na tela
+    setTimeout(loadData, 1500);
   })
-  .catch(err => {
-    console.error(err);
-    alert("Erro ao salvar: " + err.message);
-  });
+  .catch(err => alert("Erro ao salvar: " + err));
 }
-</script>
