@@ -216,7 +216,6 @@ tr:last-child td{border-bottom:none}
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script>
-// URL DO SEU GOOGLE APPS SCRIPT ATUALIZADO
 const GS_URL = 'https://script.google.com/macros/s/AKfycbxv18-9lVZK5BWMC3oe0-FiHzphZGtkEPxopz57E1zxNLL_Pt-Z_OLQDCS3O3of4OoV/exec';
 
 let logs = [];
@@ -309,6 +308,8 @@ async function registerReading(tank) {
       vol: entry.vol, pres: entry.pres, max: entry.max, pct: entry.pct,
       consumption: entry.consumption, status: entry.status, obs: entry.obs
     });
+    
+    // Envia usando a técnica de imagem para evitar erros CORS
     const img = new Image();
     img.src = GS_URL + '?' + params.toString();
     await new Promise(resolve => setTimeout(resolve, 1500));
@@ -321,7 +322,7 @@ async function registerReading(tank) {
     document.getElementById('in-'+tank+'-pres').value = '';
     document.getElementById('in-'+tank+'-obs').value  = '';
     document.getElementById('in-'+tank+'-time').value = nowTime();
-    toast('✓ Leitura salva no Google Sheets!');
+    toast('✓ Leitura salva com sucesso!');
   } catch(e) {
     toast('Erro ao salvar. Verifique a conexão.', true);
   }
@@ -333,7 +334,7 @@ async function loadData() {
   document.getElementById('log-empty').textContent   = 'Carregando...';
   document.getElementById('log-table').style.display = 'none';
   try {
-    const res  = await fetch(GS_URL + '?_=' + Date.now());
+    const res  = await fetch(GS_URL + '?_=' + Date.now(), { method: 'GET', redirect: 'follow' });
     const data = await res.json();
     if (!data.rows || data.rows.length === 0) {
       logs = []; document.getElementById('log-empty').textContent = 'Nenhum registro ainda.';
