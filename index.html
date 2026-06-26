@@ -276,6 +276,11 @@ function applyTankUI(tank, entry) {
   if (cons === null || isNaN(cons)) { consEl.innerHTML = '—'; consEl.style.color = ''; }
   else if (cons < 0) { consEl.innerHTML = '+' + Math.abs(cons).toFixed(1) + '<span class="mu"> pol ↑</span>'; consEl.style.color = '#185FA5'; }
   else { consEl.innerHTML = cons.toFixed(1) + '<span class="mu"> pol</span>'; consEl.style.color = '#0F6E56'; }
+
+  // Mantém os últimos registros aplicados diretamente nos inputs visuais
+  if (!isNaN(vol)) document.getElementById('in-'+tank+'-vol').value = vol.toFixed(1);
+  if (!isNaN(pres)) document.getElementById('in-'+tank+'-pres').value = pres.toFixed(1);
+  if (entry.user && entry.user !== "Não informado") document.getElementById('in-'+tank+'-user').value = entry.user;
 }
 
 async function registerReading(tank) {
@@ -309,7 +314,6 @@ async function registerReading(tank) {
       consumption: entry.consumption, status: entry.status, obs: entry.obs
     });
     
-    // Envia usando a técnica de imagem para evitar erros CORS
     const img = new Image();
     img.src = GS_URL + '?' + params.toString();
     await new Promise(resolve => setTimeout(resolve, 1500));
@@ -318,8 +322,7 @@ async function registerReading(tank) {
     applyTankUI(tank, entry);
     document.getElementById('last-update').textContent = 'Última atualização: ' + entry.date + ' ' + entry.time + ' por ' + user;
     renderChart(); renderTable();
-    document.getElementById('in-'+tank+'-vol').value  = '';
-    document.getElementById('in-'+tank+'-pres').value = '';
+    
     document.getElementById('in-'+tank+'-obs').value  = '';
     document.getElementById('in-'+tank+'-time').value = nowTime();
     toast('✓ Leitura salva com sucesso!');
