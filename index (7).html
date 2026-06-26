@@ -51,10 +51,6 @@
     .btn-o2{background:var(--blue)}
     .btn-n2o{background:var(--pink)}
 
-    .status-low{color:#d32f2f; font-weight:600}
-    .status-medium{color:#f57c00; font-weight:600}
-    .status-good{color:#388e3c; font-weight:600}
-
     .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1e1e1e;color:white;padding:14px 24px;border-radius:12px;display:none;z-index:1000}
   </style>
 </head>
@@ -72,41 +68,33 @@
   </header>
 
   <div class="grid">
-    <!-- O₂ -->
     <div class="card">
       <div class="icon icon-o2">🫁</div>
       <h3>Oxigênio (O₂) Médico</h3>
-      
       <div class="gauge-wrap">
         <div class="gauge-top"><span>Nível</span><span id="o2-pct">0%</span></div>
         <div class="gauge-track"><div class="gauge-fill" id="o2-bar" style="width:0%;background:#185FA5"></div></div>
       </div>
-
       <div class="field"><label>Máx (pol)</label><input type="number" id="in-o2-max" value="160" step="0.1"></div>
       <div class="field"><label>Nível atual (pol)</label><input type="number" id="in-o2-vol" step="0.1" placeholder="Ex: 142.5"></div>
       <div class="field"><label>Pressão (bar)</label><input type="number" id="in-o2-pres" step="0.1" placeholder="Ex: 9.5"></div>
       <div class="field"><label>Responsável</label><input type="text" id="in-o2-user" placeholder="Seu nome"></div>
       <div class="field"><label>Observação</label><textarea id="in-o2-obs" rows="2" placeholder="Observações..."></textarea></div>
-
       <button class="btn-reg btn-o2" onclick="registerReading('o2')">Registrar Leitura O₂</button>
     </div>
 
-    <!-- N₂O -->
     <div class="card">
       <div class="icon icon-n2o">💨</div>
       <h3>Óxido Nitroso (N₂O)</h3>
-      
       <div class="gauge-wrap">
         <div class="gauge-top"><span>Nível</span><span id="n2o-pct">0%</span></div>
         <div class="gauge-track"><div class="gauge-fill" id="n2o-bar" style="width:0%;background:#993556"></div></div>
       </div>
-
       <div class="field"><label>Máx (pol)</label><input type="number" id="in-n2o-max" value="36" step="0.1"></div>
       <div class="field"><label>Nível atual (pol)</label><input type="number" id="in-n2o-vol" step="0.1" placeholder="Ex: 28.0"></div>
       <div class="field"><label>Pressão (bar)</label><input type="number" id="in-n2o-pres" step="0.1" placeholder="Ex: 10"></div>
       <div class="field"><label>Responsável</label><input type="text" id="in-n2o-user" placeholder="Seu nome"></div>
       <div class="field"><label>Observação</label><textarea id="in-n2o-obs" rows="2" placeholder="Observações..."></textarea></div>
-
       <button class="btn-reg btn-n2o" onclick="registerReading('n2o')">Registrar Leitura N₂O</button>
     </div>
   </div>
@@ -142,10 +130,8 @@ function updateGauge(gas, nivel, max) {
   const pct = max > 0 ? Math.min(Math.round((nivel / max) * 100), 100) : 0;
   const bar = document.getElementById(gas + '-bar');
   const txt = document.getElementById(gas + '-pct');
-  
   bar.style.width = pct + '%';
   txt.textContent = pct + '%';
-  
   if (pct < 25) bar.style.background = '#d32f2f';
   else if (pct < 50) bar.style.background = '#f57c00';
 }
@@ -181,28 +167,18 @@ function loadData() {
     .then(res => res.json())
     .then(records => {
       document.getElementById('last-update').textContent = 'Atualizado agora';
-
       const lastO2 = records.find(r => r.gas === 'O2') || {};
       const lastN2O = records.find(r => r.gas === 'N2O') || {};
       
       if (lastO2.nivel) updateGauge('o2', parseFloat(lastO2.nivel), parseFloat(lastO2.max || 160));
       if (lastN2O.nivel) updateGauge('n2o', parseFloat(lastN2O.nivel), parseFloat(lastN2O.max || 36));
 
-      let html = `<table style="width:100%;border-collapse:collapse">
-                    <tr style="background:#f8f8f8"><th style="padding:10px;text-align:left">Data</th><th>Gás</th><th>Nível</th><th>Pressão</th><th>Responsável</th></tr>`;
-      
+      let html = `<table style="width:100%;border-collapse:collapse"><tr style="background:#f8f8f8"><th style="padding:10px;text-align:left">Data</th><th>Gás</th><th>Nível</th><th>Pressão</th><th>Responsável</th></tr>`;
       records.slice(0, 15).forEach(r => {
-        html += `<tr>
-                   <td style="padding:10px;border-bottom:1px solid #eee">${r.data || ''}</td>
-                   <td style="padding:10px;border-bottom:1px solid #eee">${r.gas || ''}</td>
-                   <td style="padding:10px;border-bottom:1px solid #eee">${r.nivel || ''}</td>
-                   <td style="padding:10px;border-bottom:1px solid #eee">${r.pressao || ''}</td>
-                   <td style="padding:10px;border-bottom:1px solid #eee">${r.responsavel || ''}</td>
-                 </tr>`;
+        html += `<tr><td style="padding:10px;border-bottom:1px solid #eee">${r.data || ''}</td><td style="padding:10px;border-bottom:1px solid #eee">${r.gas || ''}</td><td style="padding:10px;border-bottom:1px solid #eee">${r.nivel || ''}</td><td style="padding:10px;border-bottom:1px solid #eee">${r.pressao || ''}</td><td style="padding:10px;border-bottom:1px solid #eee">${r.responsavel || ''}</td></tr>`;
       });
       html += '</table>';
       document.getElementById('log-body').innerHTML = html;
-
       updateChart(records);
     })
     .catch(() => {
@@ -213,10 +189,8 @@ function loadData() {
 function updateChart(records) {
   const ctx = document.getElementById('historyChart');
   if (chart) chart.destroy();
-  
   const o2Data = records.filter(r => r.gas === 'O2').slice(0,10).reverse();
   const n2oData = records.filter(r => r.gas === 'N2O').slice(0,10).reverse();
-
   chart = new Chart(ctx, {
     type: 'line',
     data: {
