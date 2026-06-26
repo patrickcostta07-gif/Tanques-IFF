@@ -265,6 +265,7 @@ tr:last-child td{border-bottom:none}
 const GS_URL = 'https://script.google.com/macros/s/AKfycbxv18-9lVZK5BWMC3oe0-FiHzphZGtkEPxopz57E1zxNLL_Pt-Z_OLQDCS3O3of4OoV/exec';
 const OFFLINE_KEY  = 'iff_offline_logs';
 const PENDING_KEY  = 'iff_pending_logs';
+const REQUEST_TIMEOUT_MS = 12000;
 
 let logs = [];
 let chart;
@@ -376,16 +377,45 @@ function applyTankUI(tank, entry) {
   autoEl.innerHTML = autonomy ? autonomy : '—';
 }
 
-// ---- Send to Sheets ----
+// ---- Google Sheets API ----
+function sheetsRequest(params = {}) {
+  return new Promise((resolve, reject) => {
+    const callbackName = 'iffSheetsCb_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+    const script = document.createElement('script');
+    const timeout = setTimeout(() => {
+      cleanup();
+      reject(new Error('Tempo esgotado ao acessar o Google Sheets.'));
+    }, REQUEST_TIMEOUT_MS);
+
+    function cleanup() {
+      clearTimeout(timeout);
+      delete window[callbackName];
+      if (script.parentNode) script.parentNode.removeChild(script);
+    }
+
+    window[callbackName] = (payload) => {
+      cleanup();
+      if (!payload || payload.ok === false) reject(new Error(payload && payload.error ? payload.error : 'Resposta invalida do Google Sheets.'));
+      else resolve(payload);
+    };
+
+    const query = new URLSearchParams({ ...params, callback: callbackName, _: Date.now() });
+    script.src = GS_URL + '?' + query.toString();
+    script.onerror = () => {
+      cleanup();
+      reject(new Error('Nao foi possivel acessar o Google Sheets.'));
+    };
+    document.head.appendChild(script);
+  });
+}
+
 async function sendToSheets(entry) {
-  const params = new URLSearchParams({
+  return sheetsRequest({
     action: 'write',
     date: entry.date, time: entry.time, user: entry.user, tank: entry.tank,
     vol: entry.vol, pres: entry.pres, max: entry.max || '', pct: entry.pct,
     consumption: entry.consumption, status: entry.status, obs: entry.obs
   });
-  await fetch(GS_URL + '?' + params.toString(), { method: 'GET', mode: 'no-cors' });
-  await new Promise(r => setTimeout(r, 800));
 }
 
 // ---- Sync pending ----
@@ -474,8 +504,7 @@ async function loadData() {
   }
 
   try {
-    const res  = await fetch(GS_URL + '?_=' + Date.now());
-    const data = await res.json();
+    const data = await sheetsRequest({ action: 'read' });
 
     if (!data.rows || data.rows.length === 0) {
       // Fall back to offline
@@ -502,11 +531,13 @@ async function loadData() {
     const last = logs[logs.length - 1];
     if (last) document.getElementById('last-update').textContent = 'Última atualização: ' + last.date + ' ' + last.time + (last.user ? ' por ' + last.user : '');
 
+    document.getElementById('log-empty').textContent = '';
     renderChart(); renderTable();
   } catch(e) {
     // Fallback to offline cache
     logs = getOfflineLogs().filter(l => l.tank === 'o2' || l.tank === 'n2o');
-    document.getElementById('log-empty').textContent = logs.length ? '' : 'Erro ao carregar. Exibindo dados locais.';
+    document.getElementById('last-update').textContent = 'Planilha indisponivel - usando dados locais';
+    document.getElementById('log-empty').textContent = logs.length ? '' : 'Nao foi possivel carregar a planilha. Verifique a publicacao do Apps Script.';
     ['o2','n2o'].forEach(tank => { const last = [...logs].filter(l=>l.tank===tank).pop(); if(last) applyTankUI(tank,last); });
     renderChart(); renderTable();
   }
