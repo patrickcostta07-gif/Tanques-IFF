@@ -43,6 +43,9 @@
     }
     .btn-o2{background:var(--blue)}
     .btn-n2o{background:var(--pink)}
+    .status-low{color:#d32f2f; font-weight:600}
+    .status-medium{color:#f57c00; font-weight:600}
+    .status-good{color:#388e3c; font-weight:600}
     .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1e1e1e;color:white;padding:14px 24px;border-radius:12px;display:none;z-index:1000}
   </style>
 </head>
@@ -54,7 +57,7 @@
       <p style="color:#666">Gasoterapia — IFF</p>
     </div>
     <div style="text-align:right">
-      <small id="last-update">Buscando dados da planilha...</small><br>
+      <small id="last-update">Buscando dados...</small><br>
       <button onclick="loadData()" style="margin-top:6px;padding:8px 14px">Atualizar</button>
     </div>
   </header>
@@ -108,6 +111,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
+// URL corrigida sem duplicações
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxv18-9lVZK5BWMC3oe0-FiHzphZGtkEPxopz57E1zxNLL_Pt-Z_OLQDCS3O3of4OoV/exec";
 let chart;
 
@@ -124,6 +128,7 @@ function updateGauge(gas, nivel, max) {
   const txt = document.getElementById(gas + '-pct');
   bar.style.width = pct + '%';
   txt.textContent = pct + '%';
+  
   if (pct < 25) bar.style.background = '#d32f2f';
   else if (pct < 50) bar.style.background = '#f57c00';
   else bar.style.background = gas === 'o2' ? '#185FA5' : '#993556';
@@ -167,7 +172,7 @@ function registerReading(gas) {
 }
 
 function loadData() {
-  // Ajustado com redirect para contornar a trava do Google
+  // Adicionado o parâmetro de redirect para puxar os dados corretamente sem erro de CORS
   fetch(SCRIPT_URL, { method: 'GET', redirect: 'follow' })
     .then(res => res.json())
     .then(records => {
@@ -189,11 +194,12 @@ function loadData() {
       });
       html += '</table>';
       document.getElementById('log-body').innerHTML = html;
+      
       updateChart(records);
     })
     .catch((err) => {
-      document.getElementById('log-body').innerHTML = "<p style='color:#999;padding:20px'>Erro ao carregar dados ou aguardando sincronização...</p>";
-      console.log(err);
+      document.getElementById('log-body').innerHTML = "<p style='color:#999;padding:20px'>Aguardando dados ou erro na comunicação...</p>";
+      console.error(err);
     });
 }
 
@@ -204,6 +210,7 @@ function updateChart(records) {
   const o2Data = records.filter(r => r.gas === 'O2').slice(0,10).reverse();
   const n2oData = records.filter(r => r.gas === 'N2O').slice(0,10).reverse();
   
+  // Combina as datas para gerar o eixo X do gráfico de forma limpa
   const labels = o2Data.map(r => r.data ? r.data.split(' ')[0] : '');
   
   chart = new Chart(ctx, {
