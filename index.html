@@ -54,7 +54,7 @@
       <p style="color:#666">Gasoterapia — IFF</p>
     </div>
     <div style="text-align:right">
-      <small id="last-update">Carregando dados...</small><br>
+      <small id="last-update">Buscando dados da planilha...</small><br>
       <button onclick="loadData()" style="margin-top:6px;padding:8px 14px">Atualizar</button>
     </div>
   </header>
@@ -167,7 +167,8 @@ function registerReading(gas) {
 }
 
 function loadData() {
-  fetch(SCRIPT_URL)
+  // Ajustado com redirect para contornar a trava do Google
+  fetch(SCRIPT_URL, { method: 'GET', redirect: 'follow' })
     .then(res => res.json())
     .then(records => {
       if (!records || records.length === 0) {
@@ -190,8 +191,9 @@ function loadData() {
       document.getElementById('log-body').innerHTML = html;
       updateChart(records);
     })
-    .catch(() => {
-      document.getElementById('log-body').innerHTML = "<p style='color:#999;padding:20px'>Nenhum registro encontrado ainda.</p>";
+    .catch((err) => {
+      document.getElementById('log-body').innerHTML = "<p style='color:#999;padding:20px'>Erro ao carregar dados ou aguardando sincronização...</p>";
+      console.log(err);
     });
 }
 
@@ -202,7 +204,6 @@ function updateChart(records) {
   const o2Data = records.filter(r => r.gas === 'O2').slice(0,10).reverse();
   const n2oData = records.filter(r => r.gas === 'N2O').slice(0,10).reverse();
   
-  // Extrai apenas as datas do oxigênio para servir de legenda no eixo X
   const labels = o2Data.map(r => r.data ? r.data.split(' ')[0] : '');
   
   chart = new Chart(ctx, {
